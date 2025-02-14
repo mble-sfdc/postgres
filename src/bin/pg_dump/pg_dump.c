@@ -231,7 +231,7 @@ static int	nsequences = 0;
 static void help(const char *progname);
 static void setup_connection(Archive *AH,
 							 const char *dumpencoding, const char *dumpsnapshot,
-							 char *use_role);
+							 char *use_role, const char *insecuresearchpath);
 static ArchiveFormat parseArchiveFormat(const char *format, ArchiveMode *mode);
 static void expand_schema_name_patterns(Archive *fout,
 										SimpleStringList *patterns,
@@ -508,6 +508,7 @@ main(int argc, char **argv)
 		{"sync-method", required_argument, NULL, 15},
 		{"filter", required_argument, NULL, 16},
 		{"exclude-extension", required_argument, NULL, 17},
+		{"heroku-insecure-search-path", required_argument, &dopt.insecuresearchpath, 1},
 
 		{NULL, 0, NULL, 0}
 	};
@@ -898,7 +899,7 @@ main(int argc, char **argv)
 	 * death.
 	 */
 	ConnectDatabase(fout, &dopt.cparams, false);
-	setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
+	setup_connection(fout, dumpencoding, dumpsnapshot, use_role, &dopt.insecuresearchpath);
 
 	/*
 	 * On hot standbys, never try to dump unlogged table data, since it will
@@ -1258,13 +1259,30 @@ help(const char *progname)
 
 static void
 setup_connection(Archive *AH, const char *dumpencoding,
-				 const char *dumpsnapshot, char *use_role)
+				 const char *dumpsnapshot, char *use_role,
+				 const char *insecuresearchpath)
 {
 	DumpOptions *dopt = AH->dopt;
 	PGconn	   *conn = GetConnection(AH);
 	const char *std_strings;
 
 	PQclear(ExecuteSqlQueryForSingleRow(AH, ALWAYS_SECURE_SEARCH_PATH_SQL));
+
+	/*
+	 * In order to not force customers to fix things broken by CVE-2018-1058 fixed,
+	 * we pass in an appropriate search-path to overcome them.
+	 */
+	if (insecuresearchpath)
+	{
+		PQExpBuffer qry = createPQExpBuffer();
+
+		appendPQExpBufferStr(qry, "SELECT pg_catalog.set_config('search_path', ");
+		appendStringLiteralAH(qry, insecuresearchpath, AH);
+		appendPQExpBufferStr(qry, ", false);")
+		PQclear(ExecuteSqlQueryForSingleRow(AH, qry->data));
+
+		destroyPQExpBuffer(qry);
+	}
 
 	/*
 	 * Set the client encoding if requested.
@@ -1437,6 +1455,7 @@ setupDumpWorker(Archive *AH)
 	 */
 	setup_connection(AH,
 					 pg_encoding_to_char(AH->encoding),
+					 NULL,
 					 NULL,
 					 NULL);
 }
