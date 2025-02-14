@@ -432,6 +432,8 @@ main(int argc, char **argv)
 	bool		data_only = false;
 	bool		schema_only = false;
 
+	const char *insecuresearchpath
+
 	static DumpOptions dopt;
 
 	static struct option long_options[] = {
@@ -508,7 +510,7 @@ main(int argc, char **argv)
 		{"sync-method", required_argument, NULL, 15},
 		{"filter", required_argument, NULL, 16},
 		{"exclude-extension", required_argument, NULL, 17},
-		{"heroku-insecure-search-path", required_argument, &dopt.insecuresearchpath, 1},
+		{"heroku-insecure-search-path", required_argument, NULL, 18},
 
 		{NULL, 0, NULL, 0}
 	};
@@ -749,6 +751,10 @@ main(int argc, char **argv)
 										  optarg);
 				break;
 
+			case 18:
+				insecuresearchpath = pg_strdup(optarg);
+				break;
+
 			default:
 				/* getopt_long already emitted a complaint */
 				pg_log_error_hint("Try \"%s --help\" for more information.", progname);
@@ -899,7 +905,7 @@ main(int argc, char **argv)
 	 * death.
 	 */
 	ConnectDatabase(fout, &dopt.cparams, false);
-	setup_connection(fout, dumpencoding, dumpsnapshot, use_role, &dopt.insecuresearchpath);
+	setup_connection(fout, dumpencoding, dumpsnapshot, use_role, insecuresearchpath);
 
 	/*
 	 * On hot standbys, never try to dump unlogged table data, since it will
@@ -1278,7 +1284,7 @@ setup_connection(Archive *AH, const char *dumpencoding,
 
 		appendPQExpBufferStr(qry, "SELECT pg_catalog.set_config('search_path', ");
 		appendStringLiteralAH(qry, insecuresearchpath, AH);
-		appendPQExpBufferStr(qry, ", false);")
+		appendPQExpBufferStr(qry, ", false);");
 		PQclear(ExecuteSqlQueryForSingleRow(AH, qry->data));
 
 		destroyPQExpBuffer(qry);
