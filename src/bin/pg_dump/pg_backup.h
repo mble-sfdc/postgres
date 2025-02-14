@@ -160,8 +160,6 @@ typedef struct _restoreOptions
 	/* flags derived from the user-settable flags */
 	bool		dumpSchema;
 	bool		dumpData;
-
-	const char *insecuresearchpath;
 } RestoreOptions;
 
 typedef struct _dumpOptions
@@ -210,8 +208,6 @@ typedef struct _dumpOptions
 	/* flags derived from the user-settable flags */
 	bool		dumpSchema;
 	bool		dumpData;
-
-	const char *insecuresearchpath;
 } DumpOptions;
 
 /*

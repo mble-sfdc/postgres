@@ -432,7 +432,7 @@ main(int argc, char **argv)
 	bool		data_only = false;
 	bool		schema_only = false;
 
-	const char *insecuresearchpath
+	const char *insecuresearchpath;
 
 	static DumpOptions dopt;
 
